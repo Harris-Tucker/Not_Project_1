@@ -1,0 +1,161 @@
+---
+title: "Intro_Project_Cap"
+author: "Tucker Harris"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+```
+
+## Introduction
+I chose this dataset, as it was straightforward and easy to visualize; however, it is extremely relevant in today's society. Being able to see data on how much people use their cellphone can be attributed to almost anyone today. When I initially scraped this data, I was hoping to analyze how one would determine "User behavior Class" based on the other provided data, however that column is merely a categorical variable that created bins based off of percentiles of App Usage Time. Although the data would be useful, it unfortunately is fabricated. Beyond looking at the graphs below, ( which would show very clearly fabricated data ), this data was collected from Kaggle. Many times, Kaggle data is used as mock data and should not be trusted in any case. However, this data is fabricated and should not be analyzed in hopes of analyzing real trends. 
+
+## Data Cleaning
+
+There was not a massive amount of cleaning necessary with this data. As stated above, this data was completely fabricated; therefore, there was no missing data in the entirety of this set. The cleaning that was necessary however, was fixing the column titles, renaming columns, removing an unnecessary column ( Device Model ), and changing the class of most of the columns, ( either numeric or factor ). I removed the column Device Model, as there is already an Operating System column for Apple or Android phones, and having a second categorical variable that was already somewhat dependent on what operating system the user had seemed a bit unnecessary. Overall, cleaning the data was relatively rudimentary, and nothing that would warrant a large explaination. 
+
+
+
+
+```{r, echo = FALSE}
+
+file_path <- "/Users/tharris/Desktop/user_behavior_dataset.csv"
+
+# Load the data
+raw_data <- read.csv(file_path, header = FALSE)
+
+
+```
+
+
+
+```{r, echo = FALSE}
+
+# Remove "junk" rows
+raw_data <- raw_data[-1, ]
+raw_data <- raw_data[-1, ]
+
+# Rename columns, as they were somehow removed when bringing in the data
+
+colnames(raw_data) <- c("UserID", "Device Model", "Operating System", "App Usage Time (min/day)", "Screen On Time (hours/day)",
+                          "Battery Drain (mAh/day)", "Number of Apps Installed", "Data Usage (MB/day)", "Age", "Gender", 
+                            "User Behavior Class")
+
+# Remove Column 2 ( Device Model, too many categorical variables which don't seem necessary )
+raw_data <- raw_data[, -2]
+
+# Adjust data types on numeric columns
+# Specify columns to convert
+numeric_columns <- c("UserID", "App Usage Time (min/day)", "Screen On Time (hours/day)",
+                      "Battery Drain (mAh/day)", "Number of Apps Installed", "Data Usage (MB/day)",
+                        "Age", "User Behavior Class")
+
+raw_data[numeric_columns] <- lapply(raw_data[numeric_columns], as.numeric)
+
+cleaned_data <- raw_data
+
+# As this is a classification data set, the target variable needs to be a factor
+cleaned_data$`User Behavior Class` <- as.factor(cleaned_data$`User Behavior Class`)
+
+# Making OS a factor for Random Forest Analysis
+cleaned_data$`Operating System` <- as.factor(cleaned_data$`Operating System`)
+cleaned_data$Gender <- as.factor(cleaned_data$Gender)
+```
+
+```{r, echo = FALSE}
+# Preview the data
+#str(cleaned_data)
+#head(cleaned_data)
+
+```
+
+\newpage
+
+## Graph 1 - Number of Users in Each class.
+
+```{r, echo = FALSE}
+
+ggplot(cleaned_data, aes(x = `User Behavior Class`, fill = `User Behavior Class`)) +
+  geom_bar() +
+  labs(title = "Number of Users by User Behavior Class", x = "User Behavior Class", y = "Count") +
+  theme_minimal()
+
+
+
+```
+
+
+
+
+
+This graph is meant to depict how many people are in each " User Behavior Class ". However, as stated above in the introduction, this is fabricated data. This data did not collect real App usage time from real people. Because of this, each class was binned based on a rough percentile on the predetermined App Usage Time variable. Those bins were roughly App Usage time = (0-92.8, 92.9-178.6, 178.7-292, 292.1-473, 473.1-598) this unit is measured in minutes per day. If this data was not fabricated, I would expect, ( using the same bins ), that in today's society most people would be in bin 3, 4, and 5. However, this data says that the amount of people in each class is roughly the same. 
+
+
+
+\newpage
+
+# Graph 2 - Binary Variables by app time and battery drain
+
+```{r, echo = FALSE, message = FALSE}
+
+# Plot 1: Color by Operating System
+p1 <- ggplot(cleaned_data, aes(x = `App Usage Time (min/day)`, y = `Battery Drain (mAh/day)`, color = `Operating System`)) +  
+  geom_point(alpha = 0.6) +  
+  geom_smooth(method = "lm", se = TRUE, color = "black") +  
+  labs(title = "Battery Drain vs. App Usage Time (OS)", 
+       x = "App Usage Time (min/day)", 
+       y = "Battery Drain (mAh/day)") +  
+  theme_minimal() +
+  theme(plot.title = element_text(size = 8), 
+        axis.text.x = element_text(size = 8),  
+        axis.text.y = element_text(size = 8),
+        axis.title.y = element_text(size = 7))
+
+# Plot 2: Color by Gender
+p2 <- ggplot(cleaned_data, aes(x = `App Usage Time (min/day)`, y = `Battery Drain (mAh/day)`, color = Gender)) +  
+  geom_point(alpha = 0.6) +  
+  geom_smooth(method = "lm", se = TRUE, color = "black") +  
+  labs(title = "Battery Drain vs. App Usage Time (Gender)", 
+       x = "App Usage Time (min/day)", 
+       y = "Battery Drain (mAh/day)") +  
+  theme_minimal() +
+  theme(plot.title = element_text(size = 8), 
+        axis.text.x = element_text(size = 8),  
+        axis.text.y = element_text(size = 8),
+        axis.title.y = element_text(size = 7))
+
+# Plot 3: Color by Age
+cleaned_data$AgeGroup <- cut(cleaned_data$Age, breaks = c(18, 30, 40, 50, 60), 
+                             labels = c("18-30", "31-40", "41-50", "51-60"))
+
+p3 <- ggplot(cleaned_data, aes(x = `App Usage Time (min/day)`, y = `Battery Drain (mAh/day)`, color = AgeGroup)) +  
+  geom_point(alpha = 0.6) +  
+  geom_smooth(method = "lm", se = TRUE, color = "black") +  
+  labs(title = "Battery Drain vs. App Usage Time (Age)", 
+       x = "App Usage Time (min/day)", 
+       y = "Battery Drain (mAh/day)") +  
+  theme_minimal() +
+  scale_color_discrete(drop = TRUE) +
+  theme(plot.title = element_text(size = 8), 
+        axis.text.x = element_text(size = 8),  
+        axis.text.y = element_text(size = 8),
+        axis.title.y = element_text(size = 7))
+
+# Arrange the plots in a single row
+grid.arrange(p1, p2, p3, nrow = 3)
+
+```
+
+
+This graph was meant to showcase the categorical variables in this dataset compared against the same quantitative data between graphs.The quantitative data is merely a scatterplot showing App Usage Time and Battery Drain. Obviously the more you use apps on your phone the more your battery will drain. This is merely an attempt so see if the categorical variables have any real difference between each other. The first graph shows Android and IOS as a binary variable. It shows that there are far more Android users in this dataset, however it doesn't seem like there is too much of a difference between high usage and Operating System, as there is a roughly equal distribution of colors along the trend line. The Gender binary variable appears to show the same thing. Although the density of male at the very bottom of the graph seems more prominent than any other portion of the graph. This could show a higher percentage of Class 1 users being male. Although throughout the rest of the graph it appears to be pretty even between the genders. Finally the Age graph is a little harder to interpret, as there are four different age groups. However, similar to the other two graphs, there doesn't really seem to be a significant trend between age and App Usage. 
+
+\newpage
+
+## Conclusion
+
+If given more time on this project, the first thing I would have liked to do is find more reputable and real data. This dataset was very simple, and really did not show any trends whatsoever. The fabricated data made it hard to make any real interpretations based on the graphs I created. The biggest thing I learned from when I used this data last semester was more of the exploratory stage of the analysis. Analyzing data before modeling was really helpful in determining what I want to actually want to model before mindlessly plugging data into a LLM. That is probably the biggest part I will take into my final project. The biggest challenge with doing actual analysis with this dataset would be the fact that this data is fabricated and there really doesn't seem to be any trend in the categorical variables. The only thing I found doing analysis on this data from last semester was the only significant variable was App Usage Time; because, that was what was used to generate the bins.
